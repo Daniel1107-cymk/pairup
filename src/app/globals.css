@@ -1,26 +1,140 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --court: #0d3b2e;
+  --court-deep: #082419;
+  --line: rgba(255, 255, 255, 0.55);
+  --chalk: #f4f1e6;
+  --shuttle: #e9ff47;
+  --net: #ffffff;
+  --coral: #ff6b57;
+  --bench: #d9a066;
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  --color-court: var(--court);
+  --color-court-deep: var(--court-deep);
+  --color-chalk: var(--chalk);
+  --color-shuttle: var(--shuttle);
+  --color-coral: var(--coral);
+  --color-bench: var(--bench);
+  --font-display: var(--font-display), "Bricolage Grotesque", sans-serif;
+  --font-body: var(--font-body), "Atkinson Hyperlegible", sans-serif;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  color: var(--chalk);
+  font-family: var(--font-body);
+  /* court floor: vignette + chalk-line grid, no image */
+  background:
+    radial-gradient(120% 80% at 50% 0%, rgba(233, 255, 71, 0.08), transparent 60%),
+    repeating-linear-gradient(0deg, transparent 0 79px, rgba(255, 255, 255, 0.05) 79px 81px),
+    repeating-linear-gradient(90deg, transparent 0 79px, rgba(255, 255, 255, 0.05) 79px 81px),
+    linear-gradient(var(--court), var(--court-deep));
+  background-attachment: fixed;
+  min-height: 100dvh;
 }
+
+h1, h2, .display { font-family: var(--font-display); }
+
+/* chalk-outlined panel */
+.panel {
+  border: 2px solid var(--line);
+  border-radius: 6px;
+  background: rgba(0, 0, 0, 0.22);
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.35), 0 10px 30px -18px #000;
+}
+
+/* mini court: outer chalk box, dashed net down the middle */
+.court {
+  position: relative;
+  border: 3px solid var(--net);
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.04);
+}
+/* only a freshly filled court animates: keyed by match id, so untouched courts keep their DOM node */
+.court-new { animation: serve 220ms var(--ease-out) both; }
+.net { position: relative; }
+.net::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 0 50%;
+  width: 0;
+  border-left: 3px dashed var(--net);
+  opacity: 0.8;
+}
+.court-side { padding: 0.9rem 0.75rem; }
+
+.shuttle-btn {
+  background: var(--shuttle);
+  color: var(--court-deep);
+  font-family: var(--font-display);
+  letter-spacing: -0.01em;
+  box-shadow: 0 6px 0 #9db300, 0 12px 24px -8px rgba(233, 255, 71, 0.5);
+  transition: transform 160ms var(--ease-out), box-shadow 160ms var(--ease-out);
+}
+.shuttle-btn:active:not(:disabled) { transform: translateY(4px); box-shadow: 0 2px 0 #9db300; }
+.shuttle-btn:disabled { opacity: 0.35; box-shadow: none; }
+
+/* every other pressable */
+.press { transition: transform 160ms var(--ease-out); }
+.press:active:not(:disabled) { transform: scale(0.97); }
+
+/* pending server action: the tap registered, don't tap again */
+button[data-pending] { pointer-events: none; }
+button[data-pending] > * { filter: blur(2px); opacity: 0.6; transition: filter 200ms ease, opacity 200ms ease; }
+
+/* new list rows fade in (player added, bench change) */
+.row {
+  transition: opacity 200ms var(--ease-out), transform 200ms var(--ease-out);
+  @starting-style { opacity: 0; transform: translateY(4px); }
+}
+
+/* underline inputs: a chalk baseline that turns shuttle-yellow on focus */
+.field {
+  background: transparent;
+  border: 0;
+  border-bottom: 2px solid var(--line);
+  border-radius: 0;
+  padding-left: 0;
+  padding-right: 0;
+  color: var(--chalk);
+  color-scheme: dark; /* native date/select chrome renders light-on-dark */
+  transition: border-color 0.15s;
+}
+.field:focus { outline: none; border-bottom-color: var(--shuttle); border-bottom-width: 3px; margin-bottom: -1px; }
+select.field { padding-right: 1.5rem; }
+.field::placeholder { color: rgba(244, 241, 230, 0.4); }
+.field option { background: var(--court-deep); color: var(--chalk); }
+
+.chip {
+  border: 1.5px solid var(--line);
+  border-radius: 999px;
+  padding: 0.2rem 0.6rem;
+  color: rgba(244, 241, 230, 0.75);
+}
+.chip-hot { border-color: var(--shuttle); color: var(--shuttle); }
+
+/* faint shuttlecock watermark behind the hero */
+.hero::after {
+  content: "🏸";
+  position: absolute;
+  right: -0.3em;
+  top: -0.4em;
+  font-size: 7rem;
+  opacity: 0.12;
+  transform: rotate(-20deg);
+  pointer-events: none;
+}
+
+@keyframes serve {
+  from { opacity: 0; transform: translateY(6px) scale(0.98); }
+  to   { opacity: 1; transform: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .court-new { animation: fade 200ms ease both; }
+  .press:active:not(:disabled), .shuttle-btn:active:not(:disabled) { transform: none; }
+  .row { @starting-style { transform: none; } }
+}
+@keyframes fade { from { opacity: 0; } to { opacity: 1; } }
