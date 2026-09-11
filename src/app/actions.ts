@@ -2,6 +2,9 @@
 
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
+import { cookies } from "next/headers";
+import { timingSafeEqual } from "node:crypto";
+import { token } from "@/lib/auth";
 import { sql } from "@/lib/db";
 import { generateRound, type Match, type Player } from "@/lib/pairing";
 
@@ -95,4 +98,15 @@ export async function fillCourts(form: FormData) {
   for (const m of matches)
     await sql`insert into matches (round_id, court_number, team_a_players, team_b_players) values (${roundId}, ${empty[m.court - 1]}, ${m.teamA}, ${m.teamB})`;
   revalidatePath(`/s/${sessionId}`);
+}
+
+export async function login(form: FormData) {
+  const input = Buffer.from(String(form.get("passphrase") ?? ""));
+  const secret = Buffer.from(process.env.PASSPHRASE ?? "");
+  const ok = input.length === secret.length && timingSafeEqual(input, secret);
+  if (!ok) redirect("/login?bad");
+  (await cookies()).set("pairup", token(), {
+    httpOnly: true, sameSite: "lax", secure: process.env.NODE_ENV === "production", maxAge: 60 * 60 * 24 * 365, path: "/",
+  });
+  redirect("/");
 }
