@@ -5,7 +5,10 @@ import "./globals.css";
 const display = Bricolage_Grotesque({ variable: "--font-display", subsets: ["latin"], weight: ["600", "800"] });
 const body = Atkinson_Hyperlegible({ variable: "--font-body", subsets: ["latin"], weight: ["400", "700"] });
 
-export const metadata: Metadata = { title: "PairUp" };
+export const metadata: Metadata = {
+  title: "PairUp",
+  appleWebApp: { capable: true, statusBarStyle: "black-translucent", title: "PairUp" },
+};
 export const viewport: Viewport = { themeColor: "#0d3b2e" };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

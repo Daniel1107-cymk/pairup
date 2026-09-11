@@ -7,4 +7,4 @@ export function proxy(req: NextRequest) {
   return NextResponse.rewrite(new URL("/login", req.url));
 }
 
-export const config = { matcher: ["/((?!_next/static|_next/image|favicon.ico).*)"] };
+export const config = { matcher: ["/((?!_next/static|_next/image|favicon.ico|manifest.webmanifest|icon-.*png|apple-icon.*).*)"] };
