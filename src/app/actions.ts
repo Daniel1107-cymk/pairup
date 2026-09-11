@@ -78,7 +78,7 @@ export async function fillCourts(form: FormData) {
   const sessionId = int(form.get("sessionId"), 1, 1e9);
 
   const [session] = await sql`select court_count from sessions where id = ${sessionId}`;
-  const players = await sql<Player[]>`select id, name, skill_rating as skill from players where session_id = ${sessionId}`;
+  const players = await sql<Player[]>`select id, name, skill_rating as skill from players where session_id = ${sessionId} and not resting`;
   const history = await sql<(Match & { active: boolean })[]>`
     select m.court_number as court, m.team_a_players as "teamA", m.team_b_players as "teamB", m.finished_at is null as active
     from matches m join rounds r on r.id = m.round_id where r.session_id = ${sessionId}`;
@@ -109,4 +109,20 @@ export async function login(form: FormData) {
     httpOnly: true, sameSite: "lax", secure: process.env.NODE_ENV === "production", maxAge: 60 * 60 * 24 * 365, path: "/",
   });
   redirect("/");
+}
+
+/** Toggle a player's rest flag; resting players sit out every Fill until toggled back. */
+export async function toggleRest(form: FormData) {
+  const sessionId = int(form.get("sessionId"), 1, 1e9);
+  const id = int(form.get("playerId"), 1, 1e9);
+  await sql`update players set resting = not resting where id = ${id} and session_id = ${sessionId}`;
+  revalidatePath(`/s/${sessionId}`);
+}
+
+export async function setSkill(form: FormData) {
+  const sessionId = int(form.get("sessionId"), 1, 1e9);
+  const id = int(form.get("playerId"), 1, 1e9);
+  const skill = form.get("skill") ? int(form.get("skill"), 1, 5) : null;
+  await sql`update players set skill_rating = ${skill} where id = ${id} and session_id = ${sessionId}`;
+  revalidatePath(`/s/${sessionId}`);
 }

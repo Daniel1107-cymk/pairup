@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { sql } from "@/lib/db";
-import { addPlayer, deleteSession, fillCourts, finishCourt, removePlayer, undoLast } from "../../actions";
+import { addPlayer, deleteSession, fillCourts, finishCourt, removePlayer, setSkill, toggleRest, undoLast } from "../../actions";
+import { AutoSelect } from "../../auto-select";
 import { Submit } from "../../submit";
 
 export const dynamic = "force-dynamic";
@@ -12,7 +13,7 @@ export default async function Session({ params }: PageProps<"/s/[id]">) {
   const [session] = await sql`select id, date, venue, court_count from sessions where id = ${id}`;
   if (!session) notFound();
 
-  const players = await sql`select id, name, skill_rating from players where session_id = ${id} order by id`;
+  const players = await sql`select id, name, skill_rating, resting from players where session_id = ${id} order by id`;
   const games = await sql`
     select p.id, count(m.id)::int as n from players p
     left join matches m on p.id = any(m.team_a_players) or p.id = any(m.team_b_players)
@@ -27,7 +28,8 @@ export default async function Session({ params }: PageProps<"/s/[id]">) {
   const byId = Object.fromEntries(players.map((p) => [p.id, p]));
   const played = Object.fromEntries(games.map((g) => [g.id, g.n]));
   const onCourt = new Set(matches.flatMap((m) => [...m.team_a_players, ...m.team_b_players]));
-  const bench = players.filter((p) => !onCourt.has(p.id));
+  const bench = players.filter((p) => !onCourt.has(p.id) && !p.resting);
+  const resting = players.filter((p) => p.resting && !onCourt.has(p.id));
   const emptyCourts = session.court_count - matches.length;
   const started = matches.length > 0 || done > 0;
   const rated = players.some((p) => p.skill_rating);
@@ -97,6 +99,11 @@ export default async function Session({ params }: PageProps<"/s/[id]">) {
             <div className="display mt-1 flex flex-wrap gap-x-3 text-lg">
               {bench.length ? bench.map((p) => <span key={p.id}>{p.name}<span className="ml-1 text-xs opacity-60">{played[p.id] ?? 0}g</span></span>) : "everyone's playing"}
             </div>
+            {resting.length > 0 && (
+              <div className="mt-2 text-sm opacity-60">
+                <span className="text-xs font-bold uppercase tracking-widest">Resting</span> · {resting.map((p) => p.name).join(", ")}
+              </div>
+            )}
           </div>
         </section>
       ) : (
@@ -119,10 +126,26 @@ export default async function Session({ params }: PageProps<"/s/[id]">) {
         <ul className="panel divide-y divide-white/15">
           {players.map((p) => (
             <li key={p.id} className="row flex items-center gap-3 px-3 py-2">
-              <span className={`h-2 w-2 shrink-0 rounded-full ${!started ? "bg-chalk/20" : onCourt.has(p.id) ? "bg-shuttle" : "bg-bench"}`} aria-hidden />
+              <span className={`h-2 w-2 shrink-0 rounded-full ${!started ? "bg-chalk/20" : onCourt.has(p.id) ? "bg-shuttle" : p.resting ? "bg-chalk/20" : "bg-bench"}`} aria-hidden />
               <span className="display flex-1 text-lg">{p.name}</span>
-              {p.skill_rating && <span className="text-xs text-shuttle">{"★".repeat(p.skill_rating)}</span>}
+              <form action={setSkill}>
+                <input type="hidden" name="sessionId" value={id} />
+                <input type="hidden" name="playerId" value={p.id} />
+                <AutoSelect key={p.skill_rating ?? 0} name="skill" defaultValue={p.skill_rating ?? ""} aria-label={`${p.name} skill`} className="field cursor-pointer border-0 bg-transparent p-1 text-xs text-shuttle">
+                  <option value="">★?</option>
+                  {[1, 2, 3, 4, 5].map((n) => <option key={n} value={n}>{"★".repeat(n)}</option>)}
+                </AutoSelect>
+              </form>
               <span className="tabular-nums text-xs text-chalk/50">{played[p.id] ?? 0}g</span>
+              {!onCourt.has(p.id) && (
+                <form action={toggleRest}>
+                  <input type="hidden" name="sessionId" value={id} />
+                  <input type="hidden" name="playerId" value={p.id} />
+                  <Submit className={`press rounded-full border px-2 py-0.5 text-xs ${p.resting ? "border-bench text-bench" : "border-chalk/30 text-chalk/60"}`}>
+                    {p.resting ? "resting" : "rest"}
+                  </Submit>
+                </form>
+              )}
               {!onCourt.has(p.id) && (
                 <form action={removePlayer}>
                   <input type="hidden" name="sessionId" value={id} />

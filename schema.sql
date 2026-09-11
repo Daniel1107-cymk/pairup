@@ -32,3 +32,4 @@ create table if not exists matches (
 alter table matches add column if not exists finished_at timestamptz;
 create index if not exists matches_active on matches (round_id) where finished_at is null;
 alter table rounds add column if not exists created_at timestamptz not null default now();
+alter table players add column if not exists resting boolean not null default false;
