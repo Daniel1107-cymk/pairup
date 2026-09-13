@@ -10,6 +10,7 @@
   --coral: #ff6b57;
   --bench: #d9a066;
   --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  color-scheme: dark;
 }
 
 @theme inline {
@@ -44,6 +45,7 @@ h1, h2, .display { font-family: var(--font-display); }
   border-radius: 6px;
   background: rgba(0, 0, 0, 0.22);
   box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.35), 0 10px 30px -18px #000;
+  overflow: hidden;
 }
 
 /* mini court: outer chalk box, dashed net down the middle */
@@ -106,7 +108,7 @@ button[data-pending] > * { filter: blur(2px); opacity: 0.6; transition: filter 2
 .field:focus { outline: none; border-bottom-color: var(--shuttle); border-bottom-width: 3px; margin-bottom: -1px; }
 select.field { padding-right: 1.5rem; }
 .field::placeholder { color: rgba(244, 241, 230, 0.4); }
-.field option { background: var(--court-deep); color: var(--chalk); }
+option, .field option { background: var(--court-deep); color: var(--chalk); }
 
 .chip {
   border: 1.5px solid var(--line);

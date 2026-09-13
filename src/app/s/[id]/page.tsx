@@ -117,42 +117,46 @@ export default async function Session({ params }: PageProps<"/s/[id]">) {
         <form action={addPlayer} className="flex gap-2">
           <input type="hidden" name="sessionId" value={id} />
           <input name="name" placeholder="Add a name" required className="field min-w-0 flex-1 p-3" />
-          <select name="skill" className="field p-3" aria-label="Skill 1–5">
+          <select name="skill" className="field shrink-0 p-3" aria-label="Skill 1–5">
             <option value="">★?</option>
             {[1, 2, 3, 4, 5].map((n) => <option key={n} value={n}>★{n}</option>)}
           </select>
-          <Submit className="press rounded-full bg-chalk px-5 font-bold text-court-deep">Add</Submit>
+          <Submit className="press shrink-0 rounded-full bg-chalk px-5 font-bold text-court-deep">Add</Submit>
         </form>
         <ul className="panel divide-y divide-white/15">
           {players.map((p) => (
-            <li key={p.id} className="row flex items-center gap-3 px-3 py-2">
-              <span className={`h-2 w-2 shrink-0 rounded-full ${!started ? "bg-chalk/20" : onCourt.has(p.id) ? "bg-shuttle" : p.resting ? "bg-chalk/20" : "bg-bench"}`} aria-hidden />
-              <span className="display flex-1 text-lg">{p.name}</span>
-              <form action={setSkill}>
-                <input type="hidden" name="sessionId" value={id} />
-                <input type="hidden" name="playerId" value={p.id} />
-                <AutoSelect key={p.skill_rating ?? 0} name="skill" defaultValue={p.skill_rating ?? ""} aria-label={`${p.name} skill`} className="field cursor-pointer border-0 bg-transparent p-1 text-xs text-shuttle">
-                  <option value="">★?</option>
-                  {[1, 2, 3, 4, 5].map((n) => <option key={n} value={n}>{"★".repeat(n)}</option>)}
-                </AutoSelect>
-              </form>
-              <span className="tabular-nums text-xs text-chalk/50">{played[p.id] ?? 0}g</span>
-              {!onCourt.has(p.id) && (
-                <form action={toggleRest}>
+            <li key={p.id} className="row flex items-center justify-between gap-2 px-3 py-2">
+              <div className="flex min-w-0 flex-1 items-center gap-2">
+                <span className={`h-2 w-2 shrink-0 rounded-full ${!started ? "bg-chalk/20" : onCourt.has(p.id) ? "bg-shuttle" : p.resting ? "bg-chalk/20" : "bg-bench"}`} aria-hidden />
+                <span className="display truncate text-lg font-semibold leading-tight" title={p.name}>{p.name}</span>
+              </div>
+              <div className="flex shrink-0 items-center gap-1.5">
+                <form action={setSkill} className="shrink-0">
                   <input type="hidden" name="sessionId" value={id} />
                   <input type="hidden" name="playerId" value={p.id} />
-                  <Submit className={`press rounded-full border px-2 py-0.5 text-xs ${p.resting ? "border-bench text-bench" : "border-chalk/30 text-chalk/60"}`}>
-                    {p.resting ? "resting" : "rest"}
-                  </Submit>
+                  <AutoSelect key={p.skill_rating ?? 0} name="skill" defaultValue={p.skill_rating ?? ""} aria-label={`${p.name} skill`} className="cursor-pointer rounded border border-white/20 bg-white/5 px-1.5 py-0.5 text-xs text-shuttle transition-colors hover:border-white/40 focus:border-shuttle focus:outline-none">
+                    <option value="">★?</option>
+                    {[1, 2, 3, 4, 5].map((n) => <option key={n} value={n}>{"★".repeat(n)}</option>)}
+                  </AutoSelect>
                 </form>
-              )}
-              {!onCourt.has(p.id) && (
-                <form action={removePlayer}>
-                  <input type="hidden" name="sessionId" value={id} />
-                  <input type="hidden" name="playerId" value={p.id} />
-                  <Submit className="press px-2 text-coral" aria-label={`Remove ${p.name}`}>✕</Submit>
-                </form>
-              )}
+                <span className="w-5 text-right tabular-nums text-xs text-chalk/50 shrink-0">{played[p.id] ?? 0}g</span>
+                {!onCourt.has(p.id) && (
+                  <form action={toggleRest} className="shrink-0">
+                    <input type="hidden" name="sessionId" value={id} />
+                    <input type="hidden" name="playerId" value={p.id} />
+                    <Submit className={`press rounded-full border px-2 py-0.5 text-xs ${p.resting ? "border-bench text-bench" : "border-chalk/30 text-chalk/60"}`}>
+                      {p.resting ? "resting" : "rest"}
+                    </Submit>
+                  </form>
+                )}
+                {!onCourt.has(p.id) && (
+                  <form action={removePlayer} className="shrink-0">
+                    <input type="hidden" name="sessionId" value={id} />
+                    <input type="hidden" name="playerId" value={p.id} />
+                    <Submit className="press flex h-6 w-6 items-center justify-center rounded text-coral hover:bg-coral/10" aria-label={`Remove ${p.name}`}>✕</Submit>
+                  </form>
+                )}
+              </div>
             </li>
           ))}
         </ul>

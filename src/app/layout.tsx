@@ -9,7 +9,11 @@ export const metadata: Metadata = {
   title: "PairUp",
   appleWebApp: { capable: true, statusBarStyle: "black-translucent", title: "PairUp" },
 };
-export const viewport: Viewport = { themeColor: "#0d3b2e" };
+export const viewport: Viewport = {
+  themeColor: "#0d3b2e",
+  width: "device-width",
+  initialScale: 1,
+};
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
