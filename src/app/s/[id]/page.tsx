@@ -113,7 +113,7 @@ export default async function Session({ params }: PageProps<"/s/[id]">) {
       )}
 
       <section className="space-y-3">
-        <h2 className="text-xs uppercase tracking-[0.2em] text-chalk/50">Players</h2>
+        <h2 className="text-xs uppercase tracking-[0.2em] text-chalk/50">Players · <span className="text-shuttle">{players.length}</span></h2>
         <form action={addPlayer} className="flex gap-2">
           <input type="hidden" name="sessionId" value={id} />
           <input name="name" placeholder="Add a name" required className="field min-w-0 flex-1 p-3" />
