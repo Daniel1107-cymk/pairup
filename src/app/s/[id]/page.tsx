@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { sql } from "@/lib/db";
-import { addPlayer, deleteSession, fillCourts, finishCourt, removePlayer, setSkill, toggleRest, undoLast } from "../../actions";
+import { addPlayer, assignCourt, deleteSession, fillCourts, finishCourt, removePlayer, setSkill, toggleRest, undoLast } from "../../actions";
 import { AutoSelect } from "../../auto-select";
 import { Submit } from "../../submit";
 
@@ -64,7 +64,7 @@ export default async function Session({ params }: PageProps<"/s/[id]">) {
         </form>
       )}
 
-      {started ? (
+      {started || bench.length >= 2 ? (
         <section className="space-y-4">
           <h2 className="text-xs uppercase tracking-[0.2em] text-chalk/50">Courts</h2>
           {Array.from({ length: session.court_count }, (_, i) => i + 1).map((court, i) => {
@@ -84,8 +84,31 @@ export default async function Session({ params }: PageProps<"/s/[id]">) {
                       <Submit className="press w-full py-2 text-sm font-bold uppercase tracking-widest text-shuttle/90">Finished ✓</Submit>
                     </form>
                   </>
-                ) : (
+                ) : bench.length < 2 ? (
                   <div className="flex h-24 basis-full items-center justify-center text-sm text-chalk/40">empty</div>
+                ) : (
+                  <details className="basis-full">
+                    <summary className="flex h-24 cursor-pointer list-none items-center justify-center text-sm text-chalk/40">
+                      empty · <span className="ml-1 underline underline-offset-4">pick players</span>
+                    </summary>
+                    <form action={assignCourt} className="border-t-2 border-white/30 p-3">
+                      <input type="hidden" name="sessionId" value={id} />
+                      <input type="hidden" name="court" value={court} />
+                      <div className="net flex">
+                        {(["a", "b"] as const).map((side) => (
+                          <div key={side} className="flex-1 space-y-2 px-2">
+                            {[1, 2].map((n) => (
+                              <select key={n} name={`${side}${n}`} required={n === 1} aria-label={`Team ${side.toUpperCase()} player ${n}`} className="field w-full p-2 text-sm">
+                                <option value="">{n === 1 ? "player" : "partner (opt.)"}</option>
+                                {bench.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+                              </select>
+                            ))}
+                          </div>
+                        ))}
+                      </div>
+                      <Submit className="press mt-3 w-full rounded-full border-2 border-shuttle py-2 text-sm font-bold uppercase tracking-widest text-shuttle">Put on court</Submit>
+                    </form>
+                  </details>
                 )}
               </div>
             );

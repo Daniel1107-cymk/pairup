@@ -126,3 +126,30 @@ export async function setSkill(form: FormData) {
   await sql`update players set skill_rating = ${skill} where id = ${id} and session_id = ${sessionId}`;
   revalidatePath(`/s/${sessionId}`);
 }
+
+/** Put hand-picked players on an empty court. Leave the second slot of each side blank for singles. */
+export async function assignCourt(form: FormData) {
+  const sessionId = int(form.get("sessionId"), 1, 1e9);
+  const court = int(form.get("court"), 1, 20);
+  const pick = (k: string) => (form.get(k) ? int(form.get(k), 1, 1e9) : null);
+  const teamA = [pick("a1"), pick("a2")].filter((x): x is number => x !== null);
+  const teamB = [pick("b1"), pick("b2")].filter((x): x is number => x !== null);
+  const ids = [...teamA, ...teamB];
+  if (!teamA.length || !teamB.length || new Set(ids).size !== ids.length) return;
+
+  // all picks must be free: in this session, not resting, not on an active court, and the court must be empty
+  const [{ ok }] = await sql`
+    select count(*)::int = ${ids.length} as ok from players p
+    where p.id = any(${ids}) and p.session_id = ${sessionId} and not p.resting
+      and not exists (select 1 from matches m join rounds r on r.id = m.round_id
+                      where r.session_id = ${sessionId} and m.finished_at is null
+                        and (p.id = any(m.team_a_players) or p.id = any(m.team_b_players) or m.court_number = ${court}))`;
+  if (!ok) return;
+
+  const [{ id: roundId }] = await sql`
+    insert into rounds (session_id, round_number)
+    values (${sessionId}, (select coalesce(max(round_number), 0) + 1 from rounds where session_id = ${sessionId}))
+    returning id`;
+  await sql`insert into matches (round_id, court_number, team_a_players, team_b_players) values (${roundId}, ${court}, ${teamA}, ${teamB})`;
+  revalidatePath(`/s/${sessionId}`);
+}
