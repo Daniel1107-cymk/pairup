@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { sql } from "@/lib/db";
+import { planFill } from "@/lib/next-fill";
 import { addPlayer, assignCourt, deleteSession, fillCourts, finishCourt, removePlayer, setSkill, toggleRest, undoLast } from "../../actions";
 import { AutoSelect } from "../../auto-select";
 import { Submit } from "../../submit";
@@ -32,6 +33,7 @@ export default async function Session({ params }: PageProps<"/s/[id]">) {
   const resting = players.filter((p) => p.resting && !onCourt.has(p.id));
   const emptyCourts = session.court_count - matches.length;
   const started = matches.length > 0 || done > 0;
+  const plan = await planFill(id, Math.max(emptyCourts, 1));
   const rated = players.some((p) => p.skill_rating);
   const strength = (ids: number[]) => ids.reduce((s, i) => s + (byId[i]?.skill_rating ?? 3), 0);
   const Team = ({ ids }: { ids: number[] }) => (
@@ -128,6 +130,22 @@ export default async function Session({ params }: PageProps<"/s/[id]">) {
               </div>
             )}
           </div>
+
+          {plan && (
+            <div className="rounded border-2 border-dashed border-shuttle/50 p-3">
+              <div className="text-xs font-bold uppercase tracking-widest text-shuttle">Up next</div>
+              {plan.matches.map((m) => (
+                <div key={m.court} className="mt-2">
+                  <div className="text-xs text-chalk/50">{plan.empty[m.court - 1] ? `court ${plan.empty[m.court - 1]}` : "next free court"}</div>
+                  <div className="net flex opacity-80">
+                    <Team ids={m.teamA} />
+                    <Team ids={m.teamB} />
+                  </div>
+                </div>
+              ))}
+              {emptyCourts === 0 && <p className="mt-2 text-xs text-chalk/40">If two courts finish together, Fill reshuffles across both.</p>}
+            </div>
+          )}
         </section>
       ) : (
         <div className="court flex h-28 items-center justify-center text-sm text-chalk/40">

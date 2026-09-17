@@ -6,7 +6,7 @@ import { cookies } from "next/headers";
 import { timingSafeEqual } from "node:crypto";
 import { token } from "@/lib/auth";
 import { sql } from "@/lib/db";
-import { generateRound, type Match, type Player } from "@/lib/pairing";
+import { planFill } from "@/lib/next-fill";
 
 const int = (v: FormDataEntryValue | null, min: number, max: number) => {
   const n = Number(v);
@@ -76,21 +76,11 @@ export async function undoLast(form: FormData) {
 /** Fill every empty court from players not currently on one. */
 export async function fillCourts(form: FormData) {
   const sessionId = int(form.get("sessionId"), 1, 1e9);
-
-  const [session] = await sql`select court_count from sessions where id = ${sessionId}`;
-  const players = await sql<Player[]>`select id, name, skill_rating as skill from players where session_id = ${sessionId} and not resting`;
-  const history = await sql<(Match & { active: boolean })[]>`
-    select m.court_number as court, m.team_a_players as "teamA", m.team_b_players as "teamB", m.finished_at is null as active
-    from matches m join rounds r on r.id = m.round_id where r.session_id = ${sessionId}`;
-
-  const busy = new Set(history.filter((m) => m.active).flatMap((m) => [...m.teamA, ...m.teamB]));
-  const occupied = new Set(history.filter((m) => m.active).map((m) => m.court));
-  const empty = Array.from({ length: session.court_count }, (_, i) => i + 1).filter((c) => !occupied.has(c));
-  const free = players.filter((p) => !busy.has(p.id));
-  if (!empty.length || free.length < 2) return;
+  const plan = await planFill(sessionId);
+  if (!plan) return;
+  const { matches, empty } = plan;
 
   // generateRound numbers courts 1..n; remap onto the actually-empty court numbers
-  const { matches } = generateRound(free, empty.length, history);
   const [{ id: roundId }] = await sql`
     insert into rounds (session_id, round_number)
     values (${sessionId}, (select coalesce(max(round_number), 0) + 1 from rounds where session_id = ${sessionId}))
