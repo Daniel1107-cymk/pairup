@@ -67,3 +67,14 @@ test("seeded rng makes generateRound reproducible", () => {
   assert.deepEqual(a, b);
   assert.notDeepEqual(a, c);
 });
+
+test("late joiner does not hog courts: gamesOffset counts toward bench order", () => {
+  const regulars = mk(4, false).map((p) => ({ ...p, gamesOffset: 5 }));
+  const late = { id: 99, name: "late", skill: null, gamesOffset: 5 };
+  // with a matching offset the newcomer is just one of five, benched like anyone else
+  const withOffset = generateRound([...regulars, late], 1, [], seeded(7));
+  assert.equal(withOffset.bench.length, 1);
+  // with offset 0 they are always the fewest-games player, so never benched
+  const raw = generateRound([...regulars, { ...late, gamesOffset: 0 }], 1, [], seeded(7));
+  assert.ok(!raw.bench.includes(99));
+});

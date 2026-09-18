@@ -29,12 +29,38 @@ export async function deleteSession(form: FormData) {
   redirect("/");
 }
 
+/**
+ * Games already played by the least-played player here. A late joiner starts level with them
+ * instead of at 0, so they get on court next without monopolising every fill to "catch up".
+ */
+const joinOffset = (sessionId: number) => sql`
+  select coalesce(min(n), 0)::int as n from (
+    select count(m.id) as n from players p
+    left join matches m on (p.id = any(m.team_a_players) or p.id = any(m.team_b_players))
+    where p.session_id = ${sessionId} group by p.id) c`;
+
 export async function addPlayer(form: FormData) {
   const sessionId = int(form.get("sessionId"), 1, 1e9);
   const name = String(form.get("name")).trim().slice(0, 50);
   const skill = form.get("skill") ? int(form.get("skill"), 1, 5) : null;
   if (!name) return;
-  await sql`insert into players (session_id, name, skill_rating) values (${sessionId}, ${name}, ${skill})`;
+  const [{ n }] = await joinOffset(sessionId);
+  await sql`insert into players (session_id, name, skill_rating, games_offset) values (${sessionId}, ${name}, ${skill}, ${n})`;
+  revalidatePath(`/s/${sessionId}`);
+}
+
+/** Copy players from this club's earlier sessions (most recent rating wins). */
+export async function addFromRoster(form: FormData) {
+  const sessionId = int(form.get("sessionId"), 1, 1e9);
+  const names = form.getAll("name").map((v) => String(v).trim().slice(0, 50)).filter(Boolean);
+  if (!names.length) return;
+  const [{ n }] = await joinOffset(sessionId);
+  await sql`
+    insert into players (session_id, name, skill_rating, games_offset)
+    select ${sessionId}, r.name, r.skill_rating, ${n} from (
+      select distinct on (name) name, skill_rating from players
+      where session_id <> ${sessionId} and name = any(${names}) order by name, id desc) r
+    where not exists (select 1 from players p where p.session_id = ${sessionId} and p.name = r.name)`;
   revalidatePath(`/s/${sessionId}`);
 }
 

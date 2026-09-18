@@ -7,7 +7,7 @@ import { generateRound, seeded, type Match, type Player } from "@/lib/pairing";
  */
 export async function planFill(sessionId: number, courts?: number) {
   const [session] = await sql`select court_count from sessions where id = ${sessionId}`;
-  const players = await sql<Player[]>`select id, name, skill_rating as skill from players where session_id = ${sessionId} and not resting`;
+  const players = await sql<Player[]>`select id, name, skill_rating as skill, games_offset as "gamesOffset" from players where session_id = ${sessionId} and not resting`;
   const history = await sql<(Match & { active: boolean })[]>`
     select m.court_number as court, m.team_a_players as "teamA", m.team_b_players as "teamB", m.finished_at is null as active
     from matches m join rounds r on r.id = m.round_id where r.session_id = ${sessionId} order by m.id`;

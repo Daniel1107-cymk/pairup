@@ -1,4 +1,5 @@
-export type Player = { id: number; name: string; skill?: number | null };
+/** `gamesOffset` credits a late joiner with games so they don't hog every court catching up. */
+export type Player = { id: number; name: string; skill?: number | null; gamesOffset?: number | null };
 export type Match = { court: number; teamA: number[]; teamB: number[] };
 export type Round = { matches: Match[]; bench: number[] };
 
@@ -36,7 +37,8 @@ export function generateRound(
 
   let playing = Math.min(players.length, courtCount * 4);
   if (playing % 2) playing--; // odd leftovers bench, so courts are 4s or one 2
-  const order = shuffle(players).sort((a, b) => (games.get(a.id) ?? 0) - (games.get(b.id) ?? 0));
+  const count = (p: Player) => (games.get(p.id) ?? 0) + (p.gamesOffset ?? 0);
+  const order = shuffle(players).sort((a, b) => count(a) - count(b));
   const active = order.slice(0, playing);
   const bench = order.slice(playing).map((p) => p.id);
 

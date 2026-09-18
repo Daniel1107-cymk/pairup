@@ -2,7 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { sql } from "@/lib/db";
 import { planFill } from "@/lib/next-fill";
-import { addPlayer, assignCourt, deleteSession, fillCourts, finishCourt, removePlayer, setSkill, toggleRest, undoLast } from "../../actions";
+import { addFromRoster, addPlayer, assignCourt, deleteSession, fillCourts, finishCourt, removePlayer, setSkill, toggleRest, undoLast } from "../../actions";
 import { AutoSelect } from "../../auto-select";
 import { Submit } from "../../submit";
 
@@ -34,6 +34,10 @@ export default async function Session({ params }: PageProps<"/s/[id]">) {
   const emptyCourts = session.court_count - matches.length;
   const started = matches.length > 0 || done > 0;
   const plan = await planFill(id, Math.max(emptyCourts, 1));
+  const roster = await sql`
+    select distinct on (name) name, skill_rating from players
+    where session_id <> ${id} and name not in (select name from players where session_id = ${id})
+    order by name, id desc`;
   const rated = players.some((p) => p.skill_rating);
   const strength = (ids: number[]) => ids.reduce((s, i) => s + (byId[i]?.skill_rating ?? 3), 0);
   const Team = ({ ids }: { ids: number[] }) => (
@@ -52,7 +56,7 @@ export default async function Session({ params }: PageProps<"/s/[id]">) {
           <span className="chip">{new Date(session.date).toLocaleDateString()}</span>
           <span className="chip">{session.court_count} courts</span>
           <span className="chip">{players.length} players</span>
-          {done > 0 && <span className="chip chip-hot">{done} games done</span>}
+          {done > 0 && <Link href={`/s/${id}/summary`} className="chip chip-hot">{done} games done ›</Link>}
         </div>
       </header>
 
@@ -164,6 +168,26 @@ export default async function Session({ params }: PageProps<"/s/[id]">) {
           </select>
           <Submit className="press shrink-0 rounded-full bg-chalk px-5 font-bold text-court-deep">Add</Submit>
         </form>
+        {roster.length > 0 && (
+          <details className="panel p-3">
+            <summary className="cursor-pointer text-xs uppercase tracking-widest text-chalk/60">
+              Add regulars ({roster.length} from past sessions)
+            </summary>
+            <form action={addFromRoster} className="mt-3 space-y-3">
+              <input type="hidden" name="sessionId" value={id} />
+              <div className="flex flex-wrap gap-x-4 gap-y-2">
+                {roster.map((r) => (
+                  <label key={r.name} className="flex items-center gap-2 text-sm">
+                    <input type="checkbox" name="name" value={r.name} className="h-4 w-4 accent-shuttle" />
+                    <span className="truncate">{r.name}</span>
+                    {r.skill_rating && <span className="text-xs text-shuttle">{"★".repeat(r.skill_rating)}</span>}
+                  </label>
+                ))}
+              </div>
+              <Submit className="press w-full rounded-full border-2 border-chalk/40 py-2 text-sm font-bold uppercase tracking-widest">Add selected</Submit>
+            </form>
+          </details>
+        )}
         <ul className="panel divide-y divide-white/15">
           {players.map((p) => (
             <li key={p.id} className="row flex items-center justify-between gap-2 px-3 py-2">
